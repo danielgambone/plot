@@ -22,10 +22,11 @@
       border: 1px solid #333;
       background: #fff;
       margin-bottom: 20px;
-      cursor: crosshair;
+      cursor: grab;
       width: 400px;
       height: 400px;
       display: block;
+      touch-action: none;
     }
     .controls {
       margin-bottom: 10px;
@@ -47,7 +48,7 @@
     <h2 id="problem"></h2>
     <canvas id="grid" width="400" height="400"></canvas>
     <div class="controls">
-      <button id="checkBtn" disabled>Check Answer</button>
+      <button id="checkBtn">Check Answer</button>
       <button id="newBtn" style="display:none;">New Problem</button>
     </div>
     <div class="result" id="result"></div>
@@ -63,7 +64,9 @@
     const newBtn = document.getElementById('newBtn');
     const resultEl = document.getElementById('result');
     let target = null;
-    let userPoint = null;
+    let originPoint = { x: 0, y: 0 };
+    let dragging = false;
+    let dragOffset = { x: 0, y: 0 };
 
     function getRandomPoint() {
       const x = Math.floor(Math.random() * (AXIS_MAX - AXIS_MIN + 1)) + AXIS_MIN;
@@ -104,52 +107,102 @@
       ctx.lineTo(xAxis, canvas.height);
       ctx.stroke();
       ctx.lineWidth = 1;
-      // Draw user point
-      if (userPoint) {
-        drawPoint(userPoint.x, userPoint.y, 'blue');
-      }
+      // Draw draggable origin point
+      drawPoint(originPoint.x, originPoint.y, 'blue');
     }
 
     function drawPoint(x, y, color) {
       const px = ((x - AXIS_MIN) / GRID_SIZE) * canvas.width;
       const py = ((AXIS_MAX - y) / GRID_SIZE) * canvas.height;
       ctx.beginPath();
-      ctx.arc(px, py, 7, 0, 2 * Math.PI);
+      ctx.arc(px, py, 10, 0, 2 * Math.PI);
       ctx.fillStyle = color;
       ctx.fill();
       ctx.strokeStyle = '#333';
       ctx.stroke();
+      // Draw label
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = '#333';
+      ctx.fillText('Origin', px + 12, py - 12);
     }
 
     function newProblem() {
       target = getRandomPoint();
-      userPoint = null;
-      problemEl.textContent = `Plot the Point: (${target.x}, ${target.y})`;
+      originPoint = { x: 0, y: 0 };
       resultEl.textContent = '';
-      checkBtn.disabled = true;
+      problemEl.textContent = `Drag the origin to: (${target.x}, ${target.y})`;
       newBtn.style.display = 'none';
       drawGrid();
     }
 
-    canvas.addEventListener('click', function(e) {
-      const rect = canvas.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
-      const offsetY = e.clientY - rect.top;
-      const x = Math.round(((offsetX / canvas.width) * GRID_SIZE) + AXIS_MIN);
-      const y = Math.round((AXIS_MAX - ((offsetY / canvas.height) * GRID_SIZE)));
-      userPoint = { x, y };
+    function getMouseCoords(e) {
+      let rect = canvas.getBoundingClientRect();
+      let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      let offsetX = clientX - rect.left;
+      let offsetY = clientY - rect.top;
+      const x = ((offsetX / canvas.width) * GRID_SIZE) + AXIS_MIN;
+      const y = AXIS_MAX - ((offsetY / canvas.height) * GRID_SIZE);
+      return { x, y, offsetX, offsetY };
+    }
+
+    function isOnOrigin(mouse) {
+      const px = ((originPoint.x - AXIS_MIN) / GRID_SIZE) * canvas.width;
+      const py = ((AXIS_MAX - originPoint.y) / GRID_SIZE) * canvas.height;
+      const dx = mouse.offsetX - px;
+      const dy = mouse.offsetY - py;
+      return Math.sqrt(dx*dx + dy*dy) < 15;
+    }
+
+    function setOriginFromMouse(mouse) {
+      originPoint.x = Math.round(mouse.x);
+      originPoint.y = Math.round(mouse.y);
       drawGrid();
-      checkBtn.disabled = false;
-      resultEl.textContent = '';
+    }
+
+    canvas.addEventListener('mousedown', function(e) {
+      const mouse = getMouseCoords(e);
+      if (isOnOrigin(mouse)) {
+        dragging = true;
+        dragOffset.x = mouse.offsetX;
+        dragOffset.y = mouse.offsetY;
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+    canvas.addEventListener('touchstart', function(e) {
+      const mouse = getMouseCoords(e);
+      if (isOnOrigin(mouse)) {
+        dragging = true;
+        dragOffset.x = mouse.offsetX;
+        dragOffset.y = mouse.offsetY;
+        canvas.style.cursor = 'grabbing';
+      }
     });
 
+    function dragHandler(e) {
+      if (!dragging) return;
+      e.preventDefault();
+      const mouse = getMouseCoords(e);
+      setOriginFromMouse(mouse);
+    }
+    canvas.addEventListener('mousemove', dragHandler);
+    canvas.addEventListener('touchmove', dragHandler);
+
+    function endDrag() {
+      dragging = false;
+      canvas.style.cursor = 'grab';
+    }
+    canvas.addEventListener('mouseup', endDrag);
+    canvas.addEventListener('mouseleave', endDrag);
+    canvas.addEventListener('touchend', endDrag);
+    canvas.addEventListener('touchcancel', endDrag);
+
     checkBtn.addEventListener('click', function() {
-      if (!userPoint) return;
-      if (userPoint.x === target.x && userPoint.y === target.y) {
+      if (originPoint.x === target.x && originPoint.y === target.y) {
         resultEl.textContent = 'Correct!';
         newBtn.style.display = 'inline-block';
       } else {
-        resultEl.textContent = 'Incorrect. Try again!';
+        resultEl.textContent = `Incorrect. Try again!`;
       }
     });
 
