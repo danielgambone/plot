@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plot the Point</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 40px;
+      background: #fafafa;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #grid {
+      border: 1px solid #333;
+      background: #fff;
+      margin-bottom: 20px;
+      cursor: crosshair;
+      width: 400px;
+      height: 400px;
+      display: block;
+    }
+    .controls {
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 0 8px;
+      padding: 8px 16px;
+      font-size: 16px;
+    }
+    .result {
+      font-size: 18px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="problem"></h2>
+    <canvas id="grid" width="400" height="400"></canvas>
+    <div class="controls">
+      <button id="checkBtn" disabled>Check Answer</button>
+      <button id="newBtn" style="display:none;">New Problem</button>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+    const AXIS_MIN = -10;
+    const AXIS_MAX = 10;
+    const GRID_SIZE = AXIS_MAX - AXIS_MIN;
+    const canvas = document.getElementById('grid');
+    const ctx = canvas.getContext('2d');
+    const problemEl = document.getElementById('problem');
+    const checkBtn = document.getElementById('checkBtn');
+    const newBtn = document.getElementById('newBtn');
+    const resultEl = document.getElementById('result');
+    let target = null;
+    let userPoint = null;
+
+    function getRandomPoint() {
+      const x = Math.floor(Math.random() * (AXIS_MAX - AXIS_MIN + 1)) + AXIS_MIN;
+      const y = Math.floor(Math.random() * (AXIS_MAX - AXIS_MIN + 1)) + AXIS_MIN;
+      return { x, y };
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw grid lines
+      ctx.strokeStyle = '#ccc';
+      for (let i = 0; i <= GRID_SIZE; i++) {
+        let pos = i * (canvas.width / GRID_SIZE);
+        // vertical
+        ctx.beginPath();
+        ctx.moveTo(pos, 0);
+        ctx.lineTo(pos, canvas.height);
+        ctx.stroke();
+        // horizontal
+        ctx.beginPath();
+        ctx.moveTo(0, pos);
+        ctx.lineTo(canvas.width, pos);
+        ctx.stroke();
+      }
+      // Draw axes
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      // x axis
+      let yAxis = ((AXIS_MAX) / GRID_SIZE) * canvas.height;
+      ctx.beginPath();
+      ctx.moveTo(0, yAxis);
+      ctx.lineTo(canvas.width, yAxis);
+      ctx.stroke();
+      // y axis
+      let xAxis = ((-AXIS_MIN) / GRID_SIZE) * canvas.width;
+      ctx.beginPath();
+      ctx.moveTo(xAxis, 0);
+      ctx.lineTo(xAxis, canvas.height);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      // Draw user point
+      if (userPoint) {
+        drawPoint(userPoint.x, userPoint.y, 'blue');
+      }
+    }
+
+    function drawPoint(x, y, color) {
+      const px = ((x - AXIS_MIN) / GRID_SIZE) * canvas.width;
+      const py = ((AXIS_MAX - y) / GRID_SIZE) * canvas.height;
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#333';
+      ctx.stroke();
+    }
+
+    function newProblem() {
+      target = getRandomPoint();
+      userPoint = null;
+      problemEl.textContent = `Plot the Point: (${target.x}, ${target.y})`;
+      resultEl.textContent = '';
+      checkBtn.disabled = true;
+      newBtn.style.display = 'none';
+      drawGrid();
+    }
+
+    canvas.addEventListener('click', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      const x = Math.round(((offsetX / canvas.width) * GRID_SIZE) + AXIS_MIN);
+      const y = Math.round((AXIS_MAX - ((offsetY / canvas.height) * GRID_SIZE)));
+      userPoint = { x, y };
+      drawGrid();
+      checkBtn.disabled = false;
+      resultEl.textContent = '';
+    });
+
+    checkBtn.addEventListener('click', function() {
+      if (!userPoint) return;
+      if (userPoint.x === target.x && userPoint.y === target.y) {
+        resultEl.textContent = 'Correct!';
+        newBtn.style.display = 'inline-block';
+      } else {
+        resultEl.textContent = 'Incorrect. Try again!';
+      }
+    });
+
+    newBtn.addEventListener('click', function() {
+      newProblem();
+    });
+
+    // Initial problem
+    newProblem();
+  </script>
+</body>
+</html>

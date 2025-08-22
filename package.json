@@ -1,0 +1,12 @@
+{
+  "name": "plot-app",
+  "version": "1.0.0",
+  "main": "src/App.js",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}
